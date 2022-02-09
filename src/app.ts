@@ -1,3 +1,4 @@
+import fetch from 'node-fetch'
 import { Context, Markup } from 'telegraf'
 import { localeActions } from './handlers/language'
 // Setup @/ aliases for modules
@@ -5,37 +6,190 @@ import 'module-alias/register'
 // Config dotenv
 import * as dotenv from 'dotenv'
 dotenv.config({ path: `${__dirname}/../.env` })
-// Dependencies
-import { bot } from '@/helpers/bot'
 import { UserModel } from '@/models/User'
-import { findAllUsers } from '@/models/User'
-import { findAllCommands } from '@/models/Command'
+import { ReceiptModel } from '@/models/Receipt'
+import { bot } from '@/helpers/bot'
+import { findAllUsers, findReceiptsUser } from '@/models/User'
+import { findAllReceipts, findUserReceipt } from '@/models/Receipt'
 import { ignoreOldMessageUpdates } from '@/middlewares/ignoreOldMessageUpdates'
 import { sendHelp } from '@/handlers/sendHelp'
 import { sendAll } from '@/handlers/sendAll'
 import { i18n, attachI18N } from '@/helpers/i18n'
 import { setLanguage, sendLanguage } from '@/handlers/language'
-import { getMainMenu, getMainMenu1 } from '@/handlers/mainMenu'
+import { getMainMenu } from '@/handlers/mainMenu'
 import { attachUser } from '@/middlewares/attachUser'
-import { attachCommand } from '@/middlewares/attachCommand'
-import { protocolScene } from './handlers/protocol'
-import { dutiesScene } from './handlers/dutiesOfficer'
-import { dirtyScene } from './handlers/dirty'
-import { violationsScene } from './handlers/violationsOfficer'
-import { beltScene } from './handlers/belt'
-import { speedScene } from './handlers/speed'
-import { rightsDriverScene } from './handlers/rightsDriver'
-import { alcoholScene } from './handlers/alcohol'
-import { overtakeScene } from './handlers/overtake'
-import { pedestrianScene } from './handlers/pedestrian'
-import { tintScene } from './handlers/tint'
-import { checkListScene } from './handlers/checkList'
-import { bribeScene } from './handlers/bribe'
-import { insuranceScene } from './handlers/insurance'
-import { screeningScene } from './handlers/screening'
-import { inspectionScene } from './handlers/inspection'
-import { rememberScene } from './handlers/remember'
-import { roadsideScene } from './handlers/roadside'
+import { attachReceipt } from '@/middlewares/attachReceipts'
+
+const ExcelJS = require('exceljs')
+const fs = require('fs')
+
+class NalogRu {
+  HOST = 'irkkt-mobile.nalog.ru:8888'
+  DEVICE_OS = 'iOS'
+  CLIENT_VERSION = '2.9.0'
+  DEVICE_ID = process.env.DEVICEID
+  ACCEPT = '*/*'
+  USER_AGENT = 'billchecker/2.9.0 (iPhone; iOS 13.6; Scale/2.00)'
+  ACCEPT_LANGUAGE = 'ru-RU;q=1, en-US;q=0.9'
+  CLIENT_SECRET = process.env.CLIENTSECRET
+  OS = 'Android'
+
+  session_id: string
+  refresh_token: string
+  phone: string
+
+  async set_session_id(this, phone: string) {
+    this.phone = phone
+
+    let url = `https://${this.HOST}/v2/auth/phone/request`
+    let payload = {
+      phone: this.phone,
+      client_secret: this.CLIENT_SECRET,
+      os: this.OS,
+    }
+
+    let headers = {
+      Host: this.HOST,
+      Accept: this.ACCEPT,
+      'Device-OS': this.DEVICE_OS,
+      'Device-Id': this.DEVICE_ID,
+      clientVersion: this.CLIENT_VERSION,
+      'Accept-Language': this.ACCEPT_LANGUAGE,
+      'User-Agent': this.USER_AGENT,
+      'Content-Type': 'application/json; charset=utf-8',
+    }
+
+    let response = await fetch(url, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(payload),
+    })
+  }
+
+  async answer_sms(this, smscode: string) {
+    this.smscode = smscode
+
+    let url = `https://${this.HOST}/v2/auth/phone/verify`
+    let payload = {
+      phone: this.phone,
+      client_secret: this.CLIENT_SECRET,
+      code: this.smscode,
+      os: this.OS,
+    }
+
+    let headers = {
+      Host: this.HOST,
+      Accept: this.ACCEPT,
+      'Device-OS': this.DEVICE_OS,
+      'Device-Id': this.DEVICE_ID,
+      clientVersion: this.CLIENT_VERSION,
+      'Accept-Language': this.ACCEPT_LANGUAGE,
+      'User-Agent': this.USER_AGENT,
+      'Content-Type': 'application/json; charset=utf-8',
+    }
+
+    let response = await fetch(url, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      headers: headers,
+    })
+
+    let data = await response.json()
+
+    this.session_id = data['sessionId']
+    this.refresh_token = data['refresh_token']
+  }
+
+  async refresh_token_function(this) {
+    let url = `https://${this.HOST}/v2/mobile/users/refresh`
+    let payload = {
+      refresh_token: this.refresh_token,
+      client_secret: this.CLIENT_SECRET,
+    }
+
+    let headers = {
+      Host: this.HOST,
+      Accept: this.ACCEPT,
+      'Device-OS': this.DEVICE_OS,
+      'Device-Id': this.DEVICE_ID,
+      clientVersion: this.CLIENT_VERSION,
+      'Accept-Language': this.ACCEPT_LANGUAGE,
+      'User-Agent': this.USER_AGENT,
+      'Content-Type': 'application/json; charset=utf-8',
+    }
+
+    let response = await fetch(url, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      headers: headers,
+    })
+
+    let data = await response.json()
+    // console.log(JSON.stringify(data))
+    this.session_id = data['sessionId']
+    this.refresh_token = data['refresh_token']
+  }
+
+  async get_ticket_id(qr: string) {
+    let url = `https://${this.HOST}/v2/ticket`
+    let payload = { qr: qr }
+    let headers = {
+      Host: this.HOST,
+      Accept: this.ACCEPT,
+      'Device-OS': this.DEVICE_OS,
+      'Device-Id': this.DEVICE_ID,
+      clientVersion: this.CLIENT_VERSION,
+      'Accept-Language': this.ACCEPT_LANGUAGE,
+      sessionId: this.session_id,
+      'User-Agent': this.USER_AGENT,
+      'Content-Type': 'application/json; charset=utf-8',
+    }
+
+    let response = await fetch(url, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      headers: headers,
+    })
+
+    let data = await response.json()
+    // console.log(`ticket id = ${data['id']}`)
+    return data['id']
+  }
+
+  async get_ticket(qr: string) {
+    let ticket_id = await this.get_ticket_id(qr)
+    let url = `https://${this.HOST}/v2/tickets/${ticket_id}`
+    let headers = {
+      Host: this.HOST,
+      sessionId: this.session_id,
+      'Device-OS': this.DEVICE_OS,
+      clientVersion: this.CLIENT_VERSION,
+      'Device-Id': this.DEVICE_ID,
+      Accept: this.ACCEPT,
+      'User-Agent': this.USER_AGENT,
+      'Accept-Language': this.ACCEPT_LANGUAGE,
+      'Content-Type': 'application/json; charset=utf-8',
+    }
+
+    let response = await fetch(url, {
+      headers: headers,
+    })
+
+    let data = await response.json()
+    return data
+  }
+}
+
+const client = new NalogRu()
+let stage = 0
+let tmp_check = {
+  id: 0,
+  seller: '',
+  inn: '',
+  date: '',
+  sum: 0,
+  counter: 0,
+}
 
 // Middlewares
 bot.use(ignoreOldMessageUpdates)
@@ -43,419 +197,193 @@ bot.use(attachUser)
 bot.use(i18n.middleware(), attachI18N)
 
 // Commands
-bot.start((ctx) =>
+bot.start((ctx) => {
+  stage = 0
   ctx.replyWithHTML(
-    'Привет! Я - ассистент Володя. Помогаю правильно общаться с инспектором ДПС.\n\n' +
-      'Главное помните - вы невиновны, пока СУД не доказал обратное.\n\n' +
-      'Держитесь спокойно и уверенно.\n\n' +
-      'Включите запись на телефоне или видеорегистраторе или попросите об этом пассажиров. И вы и инспектор имеете право на аудио- и видеофиксацию.\n\n' +
-      'Приоткройте боковое окно - офицер должен подойти и представиться (смотрите в меню <b>"Обязанности инспектора"</b>).',
+    'Привет! Я бот, который проверит кассовый чек в сервисе ФНС и пришлет тебе результат.\n\n' +
+      '1. Введи номер телефона, на который сервис ФНС пришлет SMS-код для авторизации.\n\n' +
+      '2. Сканируй QR-код с кассового чека подходящим приложением на смартфоне.\n\n' +
+      '3. Полученную после сканирования текстовую строку скопируй из приложения и вставь сюда.\n\n' +
+      '4. Отправь эту строку мне и получишь результат проверки.\n\n' +
+      '5. Чеки можно сохранить в файл Excel и скачать его для аналитики.',
     getMainMenu()
   )
-)
+  ctx.replyWithHTML('Введите номер телефона в формате +70000000000')
+})
 bot.command('help', sendHelp)
 bot.command('language', sendLanguage)
 bot.command(process.env.MSG, sendAll)
+
 bot.command('stats', async (ctx) => {
   const all_users = await findAllUsers()
-  const all_commands = await findAllCommands()
+  const all_receipts = await findAllReceipts()
   ctx.replyWithHTML(
-    'Amount of users: ' +
+    '------------\n' +
+      'Amount of users: ' +
       String(all_users.length) +
       '\n' +
-      'Amount of commands: ' +
-      String(all_commands.length) +
+      'Amount of receipts: ' +
+      String(all_receipts.length) +
       '\n' +
-      'Количество просмотров:'
+      '------------'
   )
-  all_commands.forEach(function (com_info) {
-    ctx.replyWithHTML(
-      String(com_info.command_name) + ': ' + String(com_info.counter)
-    )
+})
+
+bot.hears('Авторизация', (ctx) => {
+  stage = 0
+  ctx.replyWithHTML(
+    'Новый сеанс связи с сервисом ФНС для проверки чеков:\n\n' +
+      '1. Введите номер телефона, на который сервис ФНС пришлет SMS-код для авторизации.\n\n' +
+      '2. Сканируйте QR-код с кассового чека подходящим приложением на смартфоне.\n\n' +
+      '3. Полученную после сканирования текстовую строку скопируйте из приложения и вставьте сюда.\n\n' +
+      '4. Отправьте эту строку мне и получите результат проверки.'
+  )
+  ctx.replyWithHTML('Введите номер телефона в формате +70000000000')
+})
+
+bot.hears('Мои чеки', async (ctx) => {
+  const workbook = new ExcelJS.Workbook()
+  const worksheet = workbook.addWorksheet('Мои чеки')
+  worksheet.columns = [
+    { header: 'Номер чека', key: 'fsid', width: 20 },
+    { header: 'Продавец', key: 'seller', width: 40 },
+    { header: 'ИНН', key: 'inn', width: 20 },
+    { header: 'Дата', key: 'date', width: 20 },
+    { header: 'Сумма', key: 'sum', width: 20 },
+  ]
+
+  const file_path = ctx.dbuser.id + '.xlsx'
+
+  let record = {}
+  const arr = await findReceiptsUser(ctx.dbuser.id)
+  var key
+
+  for (key of arr) {
+    await findUserReceipt(key._id).then((receipt) => {
+      record = {
+        fsid: String(receipt.fsid),
+        seller: receipt.seller,
+        inn: receipt.inn,
+        date: receipt.date,
+        sum: receipt.sum,
+      }
+
+      console.log('Пишем строку в файл XLSX')
+      worksheet.addRow(record)
+    })
+  }
+
+  await worksheet.getRow(1).eachCell((cell) => {
+    cell.font = { bold: true }
+  })
+
+  await workbook.xlsx
+    .writeFile(file_path)
+    .then(() => {
+      console.log('saved')
+      ctx.replyWithDocument({ source: file_path })
+    })
+    .catch((err) => {
+      console.log('err', err)
+    })
+
+  await fs.unlink(file_path, (err) => {
+    if (err) throw err
+
+    console.log('Deleted')
   })
 })
 
-bot.hears('Меню >>', (ctx) => {
-  ctx.replyWithHTML(
-    'Навигация по меню и ПДД',
-    Markup.inlineKeyboard([
-      Markup.button.url(
-        'ПДД',
-        'http://www.consultant.ru/document/cons_doc_LAW_2709/824c911000b3626674abf3ad6e38a6f04b8a7428/'
-      ),
-      Markup.button.callback('На стр.2 >>', 'MainMenu1'),
-    ])
-  )
-})
-bot.hears('<< Меню >>', (ctx) => {
-  ctx.replyWithHTML(
-    'Навигация по меню и ПДД',
-    Markup.inlineKeyboard([
-      Markup.button.callback('<< На стр.1', 'MainMenu'),
-      Markup.button.url(
-        'ПДД',
-        'http://www.consultant.ru/document/cons_doc_LAW_2709/824c911000b3626674abf3ad6e38a6f04b8a7428/'
-      ),
-      Markup.button.callback('На стр.3 >>', 'MainMenu2'),
-    ])
-  )
-})
-bot.hears('<< Меню', (ctx) => {
-  ctx.replyWithHTML(
-    'Навигация по меню и ПДД',
-    Markup.inlineKeyboard([
-      Markup.button.callback('<< На стр.1', 'MainMenu'),
-      Markup.button.url(
-        'ПДД',
-        'http://www.consultant.ru/document/cons_doc_LAW_2709/824c911000b3626674abf3ad6e38a6f04b8a7428/'
-      ),
-    ])
-  )
-})
-
-bot.hears('Обгон', (ctx) => {
-  attachCommand('Обгон'),
-    ctx.replyWithHTML(
-      overtakeScene(),
-      Markup.inlineKeyboard([
-        Markup.button.url(
-          'решение ВС РФ',
-          'http://www.vsrf.ru/press_center/mass_media/26545/'
-        ),
-        Markup.button.callback('<< Назад', 'MainMenu'),
-      ])
+bot.hears('Проверка чека', async (ctx) => {
+  stage = 2
+  await client
+    .refresh_token_function()
+    .then((value) =>
+      ctx.replyWithHTML('Вставьте строку - результат сканирования QR-кода')
     )
-})
-
-bot.hears('Тонировка', (ctx) => {
-  attachCommand('Тонировка'),
-    ctx.replyWithHTML(
-      tintScene(),
-      Markup.inlineKeyboard([Markup.button.callback('<< Назад', 'MainMenu')])
-    )
-})
-
-bot.hears('Обязанности инспектора', (ctx) => {
-  attachCommand('Обязанности инспектора'),
-    ctx.replyWithHTML(
-      dutiesScene(),
-      Markup.inlineKeyboard(
-        [
-          Markup.button.url(
-            'п.45,52 Адм.регламента',
-            'http://www.consultant.ru/document/cons_doc_LAW_280037/66c419ccc3c1b8205260739743cce08ca7b92cb5/'
-          ),
-          Markup.button.url(
-            'ст.5 Закона О полиции',
-            'http://www.consultant.ru/document/cons_doc_LAW_110165/50d6a5fc9ad995f3efca10bca062875531f1d30f/'
-          ),
-          Markup.button.callback('<< Назад', 'MainMenu'),
-        ],
-        { columns: 2 }
-      )
-    )
-})
-
-bot.hears('Пешеход', (ctx) => {
-  attachCommand('Пешеход'),
-    ctx.replyWithHTML(
-      pedestrianScene(),
-      Markup.inlineKeyboard(
-        [
-          Markup.button.url(
-            'п.1 ПДД',
-            'http://www.consultant.ru/document/cons_doc_LAW_2709/5894b193fda5648afe1c1a5e70c028f25cd29099/'
-          ),
-          Markup.button.url(
-            'п.14.1 ПДД',
-            'http://www.consultant.ru/document/cons_doc_LAW_2709/7c45508e360f5b7b8ae1443d73feb01f52a6199d/'
-          ),
-          Markup.button.url(
-            'ст.26.11 КоАП',
-            'http://www.consultant.ru/cons/cgi/online.cgi?from=310131-11637&req=doc&rnd=C3C6E808E7EB69228BE01CF386778992&base=LAW&n=388938&stat=srcfld%3D134%26src%3D1000000001%26fld%3D134%26code%3D65535%26page%3Dinfo%26p%3D0%26base%3DLAW%26doc%3D310131#B8vmdgSC6G9HWxoP1'
-          ),
-          Markup.button.url(
-            'ст.25.1 КоАП',
-            'http://www.consultant.ru/cons/cgi/online.cgi?from=310131-11395&req=doc&rnd=C3C6E808E7EB69228BE01CF386778992&base=LAW&n=388938&stat=srcfld%3D134%26src%3D1000000001%26fld%3D134%26code%3D65535%26page%3Dinfo%26p%3D0%26base%3DLAW%26doc%3D310131#QsZmdgSiHgvwPNxj'
-          ),
-          Markup.button.url(
-            'решение ВС РФ',
-            'http://www.vsrf.ru/press_center/mass_media/26545/'
-          ),
-          Markup.button.callback('<< Назад', 'MainMenu'),
-        ],
-        { columns: 2 }
-      )
-    )
-})
-
-bot.hears('Ваши права', (ctx) => {
-  attachCommand('Ваши права'),
-    ctx.replyWithHTML(
-      rightsDriverScene(),
-      Markup.inlineKeyboard(
-        [
-          Markup.button.url(
-            'ст.51 Конституции',
-            'http://www.consultant.ru/document/cons_doc_LAW_28399/83e04083255cc765ad2af577efd8db4607b207d5/'
-          ),
-          Markup.button.url(
-            'п.51 Адм.регламента',
-            'http://www.consultant.ru/document/cons_doc_LAW_280037/66c419ccc3c1b8205260739743cce08ca7b92cb5/'
-          ),
-          Markup.button.url(
-            'п.84,89,91 Адм.регламента',
-            'http://www.consultant.ru/document/cons_doc_LAW_280037/dbbfac1c0ef0ee0b778c4fd5075b18de5d4d3f27/'
-          ),
-          Markup.button.url(
-            'п.132 Адм.регламента',
-            'http://www.consultant.ru/document/cons_doc_LAW_280037/4afe5bd7c3584f33c86a3799783ea9508560d0ea/'
-          ),
-          Markup.button.url(
-            'ст.8 Закона о полиции',
-            'http://www.consultant.ru/document/cons_doc_LAW_110165/a9c08e29adb629fb145160965279ad2efd397de7/'
-          ),
-          Markup.button.url(
-            'решение ВС РФ',
-            'http://www.vsrf.ru/press_center/mass_media/26545/'
-          ),
-          Markup.button.callback('<< Назад', 'MainMenu'),
-        ],
-        { columns: 2 }
-      )
-    )
-})
-
-bot.hears('Алкоголь', (ctx) => {
-  attachCommand('Алкоголь'),
-    ctx.replyWithHTML(
-      alcoholScene(),
-      Markup.inlineKeyboard([
-        Markup.button.url(
-          'п.234 Адм.регламента',
-          'http://www.consultant.ru/document/cons_doc_LAW_280037/4afe5bd7c3584f33c86a3799783ea9508560d0ea/'
-        ),
-        Markup.button.callback('<< Назад', 'MainMenu'),
-      ])
-    )
-})
-
-bot.hears('Нарушения инспектора', (ctx) => {
-  attachCommand('Нарушения инспектора'),
-    ctx.replyWithHTML(
-      violationsScene(),
-      Markup.inlineKeyboard(
-        [
-          Markup.button.url(
-            'п.45,52 Адм.регламента',
-            'http://www.consultant.ru/document/cons_doc_LAW_280037/66c419ccc3c1b8205260739743cce08ca7b92cb5/'
-          ),
-          Markup.button.url(
-            'ст.5 Закона О полиции',
-            'http://www.consultant.ru/document/cons_doc_LAW_110165/50d6a5fc9ad995f3efca10bca062875531f1d30f/'
-          ),
-          Markup.button.callback('<< Назад', 'MainMenu'),
-        ],
-        { columns: 2 }
-      )
-    )
-})
-
-bot.hears('Скорость', (ctx) => {
-  attachCommand('Скорость'),
-    ctx.replyWithHTML(
-      speedScene(),
-      Markup.inlineKeyboard([Markup.button.callback('<< Назад', 'MainMenu')])
-    )
-})
-
-bot.hears('Протокол', (ctx) => {
-  attachCommand('Протокол'),
-    ctx.replyWithHTML(
-      protocolScene(),
-      Markup.inlineKeyboard(
-        [
-          Markup.button.url(
-            'ст.28.1.1 КоАП',
-            'http://www.consultant.ru/document/cons_doc_LAW_34661/777b1cbcecd072d6956dfe3563ec84636919491c/'
-          ),
-          Markup.button.url(
-            'ст.28.2 КоАП',
-            'http://www.consultant.ru/document/cons_doc_LAW_34661/86eb9da50d2bebf0f8320070bcc298ad5a93d41a/'
-          ),
-          Markup.button.url(
-            'п.134,151,168,211 Адм.регламента',
-            'http://www.consultant.ru/document/cons_doc_LAW_280037/4afe5bd7c3584f33c86a3799783ea9508560d0ea/'
-          ),
-          Markup.button.callback('<< Назад', 'MainMenu'),
-        ],
-
-        { columns: 2 }
-      )
-    )
-})
-
-bot.hears('Ремень', (ctx) => {
-  attachCommand('Ремень'),
-    ctx.replyWithHTML(
-      beltScene(),
-      Markup.inlineKeyboard([Markup.button.callback('<< Назад', 'MainMenu1')])
-    )
-})
-
-bot.hears('Грязный знак', (ctx) => {
-  attachCommand('Грязный знак'),
-    ctx.replyWithHTML(
-      dirtyScene(),
-      Markup.inlineKeyboard([Markup.button.callback('<< Назад', 'MainMenu1')])
-    )
-})
-
-bot.hears('Техосмотр', (ctx) => {
-  attachCommand('Техосмотр'),
-    ctx.replyWithHTML(
-      checkListScene(),
-      Markup.inlineKeyboard([Markup.button.callback('<< Назад', 'MainMenu1')])
-    )
-})
-
-bot.hears('ОСАГО', (ctx) => {
-  attachCommand('ОСАГО'),
-    ctx.replyWithHTML(
-      insuranceScene(),
-      Markup.inlineKeyboard(
-        [
-          Markup.button.url(
-            'ст.12.3.2 КоАП',
-            'http://www.consultant.ru/document/cons_doc_LAW_34661/0486252c9b58867b61fbeadf42daad5e67b324f1/'
-          ),
-          Markup.button.callback('<< Назад', 'MainMenu1'),
-        ],
-
-        { columns: 2 }
-      )
-    )
-})
-
-bot.hears('Взятка', (ctx) => {
-  attachCommand('Взятка'),
-    ctx.replyWithHTML(
-      bribeScene(),
-      Markup.inlineKeyboard([Markup.button.callback('<< Назад', 'MainMenu1')])
-    )
-})
-
-bot.hears('Осмотр', (ctx) => {
-  attachCommand('Осмотр'),
-    ctx.replyWithHTML(
-      screeningScene(),
-      Markup.inlineKeyboard([Markup.button.callback('<< Назад', 'MainMenu1')])
-    )
-})
-
-bot.hears('Досмотр', (ctx) => {
-  attachCommand('Досмотр'),
-    ctx.replyWithHTML(
-      inspectionScene(),
-      Markup.inlineKeyboard([Markup.button.callback('<< Назад', 'MainMenu1')])
-    )
-})
-
-bot.hears('Обочина', (ctx) => {
-  attachCommand('Обочина'),
-    ctx.replyWithHTML(
-      roadsideScene(),
-      Markup.inlineKeyboard(
-        [
-          Markup.button.url(
-            'п.1.2 ПДД',
-            'http://www.consultant.ru/document/cons_doc_LAW_2709/5894b193fda5648afe1c1a5e70c028f25cd29099/'
-          ),
-          Markup.button.url(
-            'п.9.9 ПДД',
-            'http://www.consultant.ru/document/cons_doc_LAW_2709/d08dbb6ef3956314fd36b1d54a9393598f057acf/'
-          ),
-          Markup.button.url(
-            'п.8.8 ПДД',
-            'http://www.consultant.ru/document/cons_doc_LAW_34661/73e48b1d556597db3d88d1648ea0486e7145b1de/'
-          ),
-          Markup.button.callback('<< Назад', 'MainMenu1'),
-        ],
-
-        { columns: 2 }
-      )
-    )
-})
-
-bot.hears('Забыли документы', (ctx) => {
-  attachCommand('Забыли документы'),
-    ctx.replyWithHTML(
-      rememberScene(),
-      Markup.inlineKeyboard(
-        [
-          Markup.button.url(
-            'ст.12.3 КоАП',
-            'http://www.consultant.ru/document/cons_doc_LAW_34661/0486252c9b58867b61fbeadf42daad5e67b324f1/'
-          ),
-          Markup.button.url(
-            'ст.12.7 КоАП',
-            'http://www.consultant.ru/document/cons_doc_LAW_34661/86d85d3d522bb77876c524278464db710a481926/'
-          ),
-          Markup.button.url(
-            'ст.27.13 КоАП',
-            'http://www.consultant.ru/document/cons_doc_LAW_34661/73e48b1d556597db3d88d1648ea0486e7145b1de/'
-          ),
-          Markup.button.callback('<< Назад', 'MainMenu1'),
-        ],
-
-        { columns: 2 }
+    .catch((err) =>
+      ctx.replyWithHTML(
+        "Сеанс с ФНС истек. Нажмите в меню кнопку 'Авторизация'"
       )
     )
 })
 
 // Actions
-bot.action('MainMenu', (ctx) => {
+bot.action('SaveQR', (ctx) => {
+  attachReceipt(tmp_check, ctx.dbuser.id)
   ctx.reply(
-    'Главное меню стр.1',
+    'Сохраняем чек',
     Markup.inlineKeyboard([
-      Markup.button.url(
-        'ПДД',
-        'http://www.consultant.ru/document/cons_doc_LAW_2709/824c911000b3626674abf3ad6e38a6f04b8a7428/'
-      ),
-      Markup.button.callback('На стр.2 >>', 'MainMenu1'),
+      [Markup.button.callback('Проверить еще QR-код', 'AnotherQR')],
     ])
   )
-  ctx.replyWithHTML('выбирайте нужный пункт в меню', getMainMenu())
 })
-bot.action('MainMenu1', (ctx) => {
-  ctx.reply(
-    'Главное меню стр.2',
-    Markup.inlineKeyboard(
-      [
-        Markup.button.callback('<< На стр.1', 'MainMenu'),
-        Markup.button.url(
-          'ПДД',
-          'http://www.consultant.ru/document/cons_doc_LAW_2709/824c911000b3626674abf3ad6e38a6f04b8a7428/'
-        ),
-        Markup.button.url(
-          '☕️ Кофе разработчику',
-          'https://yoomoney.ru/to/41001424035652'
-        ),
-        // Markup.button.callback('На стр.3 >>', 'MainMenu2'),
-      ],
 
-      { columns: 2 }
+bot.action('AnotherQR', async (ctx) => {
+  stage = 2
+  await client
+    .refresh_token_function()
+    .then((value) =>
+      ctx.replyWithHTML('Вставьте строку - результат сканирования QR-кода')
     )
-  )
-  ctx.replyWithHTML('выбирайте нужный пункт в меню', getMainMenu1())
+    .catch((err) =>
+      ctx.replyWithHTML(
+        "Сеанс с ФНС истек. Нажмите в меню кнопку 'Авторизация'"
+      )
+    )
 })
+
 bot.action(localeActions, setLanguage)
 
 // Errors
 bot.catch(console.error)
 
-bot.on('text', (ctx) => {
-  ctx.reply('Просто открой меню и выбери нужный пункт')
+bot.on('text', async (ctx) => {
+  let mess = ctx.message.text
+
+  if (stage == 0) {
+    if (mess.slice(0, 2) == '+7') {
+      client.set_session_id(mess)
+      stage = 1
+      ctx.replyWithHTML('Введите код из SMS')
+    } else {
+      ctx.replyWithHTML(
+        'Неправильный номер. Введите номер в формате +70000000000'
+      )
+    }
+  } else if (stage == 1) {
+    client.answer_sms(mess)
+    stage = 2
+    ctx.replyWithHTML('Вставьте строку - результат сканирования QR-кода')
+  } else if (stage == 2) {
+    if (mess.slice(0, 2) == 't=') {
+      ctx.replyWithHTML('Отправляю QR-код в ФНС')
+      let resp = await client.get_ticket(mess)
+      let sum = resp['operation']['sum'] / 100
+      tmp_check['id'] = resp['query']['fsId']
+      tmp_check['seller'] = resp['seller']['name']
+      tmp_check['inn'] = resp['seller']['inn']
+      tmp_check['date'] = resp['operation']['date']
+      tmp_check['sum'] = sum
+
+      ctx.replyWithHTML(
+        // `${JSON.stringify(resp, null, 2)}`,
+        '-----------------\n' +
+          'Кассовый чек\n' +
+          `Продавец: ${resp['seller']['name']}\n` +
+          `ИНН: ${resp['seller']['inn']}\n` +
+          `Сумма: ${sum}\n` +
+          `Дата и время: ${resp['operation']['date']}\n` +
+          '-----------------\n',
+        Markup.inlineKeyboard([
+          [Markup.button.callback('Сохранить в файл', 'SaveQR')],
+          [Markup.button.callback('Проверить еще QR-код', 'AnotherQR')],
+        ])
+      )
+    } else {
+      ctx.replyWithHTML('Неправильный формат QR-кода')
+    }
+  }
 })
 
 // Start bot

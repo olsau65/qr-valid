@@ -1,14 +1,18 @@
-import { prop, getModelForClass } from '@typegoose/typegoose'
+import { prop, getModelForClass, Ref } from '@typegoose/typegoose'
+import { Receipt } from './Receipt'
 
 export class User {
   @prop({ required: true, index: true, unique: true })
   id: number
 
-  @prop({ required: false })
+  @prop()
   username: string
 
-  @prop({ required: false })
+  @prop()
   name: string
+
+  @prop({ ref: () => Receipt, index: true, unique: true })
+  receipts: Ref<Receipt>[]
 
   @prop({ required: true, default: 'en' })
   language: string
@@ -46,4 +50,10 @@ export async function findAllUsers() {
   const filter = {}
   const all = await UserModel.find(filter)
   return all
+}
+
+// Get receipts of user
+export async function findReceiptsUser(id: number) {
+  const user = await UserModel.findOne({ id })
+  return user.receipts
 }
