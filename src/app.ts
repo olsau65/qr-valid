@@ -271,6 +271,7 @@ bot.hears('Мои чеки', async (ctx) => {
       }
 
       // console.log('Пишем строку в файл XLSX')
+      ctx.replyWithHTML('Пишем строку в файл XLSX')
       worksheet.addRow(record)
     })
   }
@@ -283,6 +284,7 @@ bot.hears('Мои чеки', async (ctx) => {
     .writeFile(file_path)
     .then(() => {
       // console.log('Сохраняем файл XLSX')
+      ctx.replyWithHTML('Отдаем файл')
       ctx.replyWithDocument({ source: file_path })
     })
     .catch((err) => {
@@ -293,6 +295,7 @@ bot.hears('Мои чеки', async (ctx) => {
     if (err) throw err
 
     // console.log('Удаляем файл XLSX')
+    ctx.replyWithHTML('Удаляем мусор')
   })
 })
 

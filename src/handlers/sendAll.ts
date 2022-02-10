@@ -12,8 +12,8 @@ export async function sendAll(ctx: Context) {
     i += 1
     ctx.telegram.sendMessage(
       message.id,
-      'Наше приложение "Автоюрист Володя" теперь доступно в App Store!\n\n' +
-        'Ссылка на приложение для владельцев "яблочных" гаджетов - https://apple.co/3HPCu1V\n\n' +
+      'Тестирование нового бота!\n\n' +
+        'Ссылка на yandex - https://yandex.ru\n\n' +
         ' Пользуйтесь и будьте здоровы в Новом Году!'
     )
     if (i == 29) {
