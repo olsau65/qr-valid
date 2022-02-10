@@ -1,4 +1,6 @@
 import fetch from 'node-fetch'
+import * as fs from 'fs'
+import * as ExcelJS from 'exceljs'
 import { Context, Markup } from 'telegraf'
 import { localeActions } from './handlers/language'
 // Setup @/ aliases for modules
@@ -6,8 +8,8 @@ import 'module-alias/register'
 // Config dotenv
 import * as dotenv from 'dotenv'
 dotenv.config({ path: `${__dirname}/../.env` })
-import { UserModel } from '@/models/User'
-import { ReceiptModel } from '@/models/Receipt'
+// import { UserModel } from '@/models/User'
+// import { ReceiptModel } from '@/models/Receipt'
 import { bot } from '@/helpers/bot'
 import { findAllUsers, findReceiptsUser } from '@/models/User'
 import { findAllReceipts, findUserReceipt } from '@/models/Receipt'
@@ -20,8 +22,8 @@ import { getMainMenu } from '@/handlers/mainMenu'
 import { attachUser } from '@/middlewares/attachUser'
 import { attachReceipt } from '@/middlewares/attachReceipts'
 
-const ExcelJS = require('exceljs')
-const fs = require('fs')
+// const ExcelJS = require('exceljs')
+// const fs = require('fs')
 
 class NalogRu {
   HOST = 'irkkt-mobile.nalog.ru:8888'
@@ -268,7 +270,7 @@ bot.hears('Мои чеки', async (ctx) => {
         sum: receipt.sum,
       }
 
-      console.log('Пишем строку в файл XLSX')
+      // console.log('Пишем строку в файл XLSX')
       worksheet.addRow(record)
     })
   }
@@ -280,7 +282,7 @@ bot.hears('Мои чеки', async (ctx) => {
   await workbook.xlsx
     .writeFile(file_path)
     .then(() => {
-      console.log('saved')
+      // console.log('Сохраняем файл XLSX')
       ctx.replyWithDocument({ source: file_path })
     })
     .catch((err) => {
@@ -290,7 +292,7 @@ bot.hears('Мои чеки', async (ctx) => {
   await fs.unlink(file_path, (err) => {
     if (err) throw err
 
-    console.log('Deleted')
+    // console.log('Удаляем файл XLSX')
   })
 })
 

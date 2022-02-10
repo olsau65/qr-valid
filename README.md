@@ -1,25 +1,11 @@
 # Telegram bot для проверки чеков по QR-коду
 
-Please, enjoy this template for Telegram bots based on telegraf.js.org. It includes most common middlewares used by me, MongoDB integration, language picker and internationalization and shows basic encapsulation techniques used by me.
+Телеграм-бот, который проверит кассовый чек в сервисе ФНС и пришлет результат.
 
-# Installation and local launch
+1. Введи в боте номер телефона, на который сервис ФНС пришлет SMS-код для авторизации.
+2. Сканируй QR-код с кассового чека подходящим приложением на смартфоне.
+3. Полученную после сканирования текстовую строку скопируй из приложения и вставь в бота.
+4. Отправь эту строку и получишь результат проверки.
+5. Чеки можно сохранить в файл Excel и скачать его для аналитики.
 
-1. Clone this repo
-2. Launch the [mongo database](https://www.mongodb.com/) locally
-3. Create `.env` with the environment variables listed below
-4. Run `yarn install` in the root folder
-5. Run `yarn develop`
-
-And you should be good to go! Feel free to fork and submit pull requests. Thanks!
-
-# Environment variables
-
-- `TOKEN` — Telegram bot token
-- `MONGO`— URL of the mongo database
-- `MSG`— command for send message to all users of bot
-
-Also, please, consider looking at `.env.sample`.
-
-# License
-
-MIT — use for any purpose. Would be great if you could leave a note about the original developers. Thanks!
+https://t.me/valid_qr_bot
