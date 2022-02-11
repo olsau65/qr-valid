@@ -242,7 +242,11 @@ bot.hears('Авторизация', (ctx) => {
 
 bot.hears('Мои чеки', async (ctx) => {
   const workbook = new ExcelJS.Workbook()
+  ctx.replyWithHTML(`${JSON.stringify(workbook, null, 2)}\n` + 'Создали книгу')
   const worksheet = workbook.addWorksheet('Мои чеки')
+  ctx.replyWithHTML(
+    `${JSON.stringify(worksheet, null, 2)}\n` + 'Создали лист в книге'
+  )
   worksheet.columns = [
     { header: 'Номер чека', key: 'fsid', width: 20 },
     { header: 'Продавец', key: 'seller', width: 40 },
@@ -255,6 +259,9 @@ bot.hears('Мои чеки', async (ctx) => {
 
   let record = {}
   const arr = await findReceiptsUser(ctx.dbuser.id)
+  ctx.replyWithHTML(
+    `${JSON.stringify(arr, null, 2)}\n` + 'Получили массив чеков пользователя'
+  )
   if (!arr) {
     ctx.replyWithHTML('Нет сохраненных чеков')
   } else {
@@ -279,7 +286,7 @@ bot.hears('Мои чеки', async (ctx) => {
       }
     }
 
-    await worksheet.getRow(1).eachCell((cell) => {
+    worksheet.getRow(1).eachCell((cell) => {
       cell.font = { bold: true }
     })
 
@@ -294,11 +301,11 @@ bot.hears('Мои чеки', async (ctx) => {
         console.log('err', err)
       })
 
-    await fs.unlink(file_path, (err) => {
+    fs.unlink(file_path, (err) => {
       if (err) throw err
 
       // console.log('Удаляем файл XLSX')
-      // ctx.replyWithHTML('Удаляем мусор')
+      ctx.replyWithHTML('Удаляем мусор')
     })
   }
 })
