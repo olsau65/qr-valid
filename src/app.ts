@@ -22,9 +22,6 @@ import { getMainMenu } from '@/handlers/mainMenu'
 import { attachUser } from '@/middlewares/attachUser'
 import { attachReceipt } from '@/middlewares/attachReceipts'
 
-// const ExcelJS = require('exceljs')
-// const fs = require('fs')
-
 class NalogRu {
   HOST = 'irkkt-mobile.nalog.ru:8888'
   DEVICE_OS = 'iOS'
@@ -261,19 +258,22 @@ bot.hears('Мои чеки', async (ctx) => {
   var key
 
   for (key of arr) {
-    await findUserReceipt(key._id).then((receipt) => {
+    // console.log(key)
+    let new_receipt = await findUserReceipt(key)
+    if (new_receipt == null) {
+      // console.log('Чек не найден в БД')
+    } else {
       record = {
-        fsid: String(receipt.fsid),
-        seller: receipt.seller,
-        inn: receipt.inn,
-        date: receipt.date,
-        sum: receipt.sum,
+        fsid: String(new_receipt.fsid),
+        seller: new_receipt.seller,
+        inn: new_receipt.inn,
+        date: new_receipt.date,
+        sum: new_receipt.sum,
       }
-
       // console.log('Пишем строку в файл XLSX')
-      ctx.replyWithHTML('Пишем строку в файл XLSX')
+      // ctx.replyWithHTML('Пишем строку в файл XLSX')
       worksheet.addRow(record)
-    })
+    }
   }
 
   await worksheet.getRow(1).eachCell((cell) => {
@@ -284,7 +284,7 @@ bot.hears('Мои чеки', async (ctx) => {
     .writeFile(file_path)
     .then(() => {
       // console.log('Сохраняем файл XLSX')
-      ctx.replyWithHTML('Отдаем файл')
+      // ctx.replyWithHTML('Отдаем файл')
       ctx.replyWithDocument({ source: file_path })
     })
     .catch((err) => {
@@ -295,7 +295,7 @@ bot.hears('Мои чеки', async (ctx) => {
     if (err) throw err
 
     // console.log('Удаляем файл XLSX')
-    ctx.replyWithHTML('Удаляем мусор')
+    // ctx.replyWithHTML('Удаляем мусор')
   })
 })
 

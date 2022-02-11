@@ -23,7 +23,7 @@ export const ReceiptModel = getModelForClass(Receipt, {
 })
 
 export async function findReceipt(tmp_check, id_user) {
-  let fsid = tmp_check['id']
+  const fsid = tmp_check['id']
   const update = {
     fsid: tmp_check['id'],
     seller: tmp_check['seller'],
@@ -39,13 +39,12 @@ export async function findReceipt(tmp_check, id_user) {
       new_receipt = await new ReceiptModel(update).save()
       //console.log('Создаем новый чек')
     } catch (err) {
-      console.log(err)
       new_receipt = await ReceiptModel.findOne({ fsid })
       //console.log('Находим чек')
     }
   }
 
-  let filter = { fsid: fsid }
+  const filter = { fsid: fsid }
 
   new_receipt = await ReceiptModel.findOneAndUpdate(filter, update)
   // console.log('Записываем чек')
@@ -63,16 +62,13 @@ export async function findReceipt(tmp_check, id_user) {
 
 // Find user's receipt
 export async function findUserReceipt(id_receipt) {
-  const _id = id_receipt
-  let receipt = await ReceiptModel.findOne({ _id })
-
-  return receipt
+  return await ReceiptModel.findOne({ _id: id_receipt })
 }
 
 // Get all receipts
 export async function findAllReceipts() {
   // Empty filter means "match all documents"
   const filter = {}
-  const all = await ReceiptModel.find(filter)
-  return all
+  const all_receipts = await ReceiptModel.find(filter)
+  return all_receipts
 }
