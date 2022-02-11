@@ -22,7 +22,7 @@ export const ReceiptModel = getModelForClass(Receipt, {
   schemaOptions: { timestamps: true },
 })
 
-export async function findReceipt(tmp_check, id_user) {
+export async function findReceipt(tmp_check, id_user: number) {
   const fsid = tmp_check['id']
   const update = {
     fsid: tmp_check['id'],
@@ -33,8 +33,7 @@ export async function findReceipt(tmp_check, id_user) {
   }
 
   let new_receipt = await ReceiptModel.findOne({ fsid })
-
-  if (new_receipt == null) {
+  if (!new_receipt) {
     try {
       new_receipt = await new ReceiptModel(update).save()
       //console.log('Создаем новый чек')
@@ -61,7 +60,7 @@ export async function findReceipt(tmp_check, id_user) {
 }
 
 // Find user's receipt
-export async function findUserReceipt(id_receipt) {
+export async function findUserReceipt(id_receipt: number) {
   return await ReceiptModel.findOne({ _id: id_receipt })
 }
 

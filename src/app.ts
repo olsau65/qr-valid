@@ -255,48 +255,52 @@ bot.hears('Мои чеки', async (ctx) => {
 
   let record = {}
   const arr = await findReceiptsUser(ctx.dbuser.id)
-  var key
+  if (!arr) {
+    ctx.replyWithHTML('Нет сохраненных чеков')
+  } else {
+    var key
 
-  for (key of arr) {
-    // console.log(key)
-    let new_receipt = await findUserReceipt(key)
-    if (new_receipt == null) {
-      // console.log('Чек не найден в БД')
-    } else {
-      record = {
-        fsid: String(new_receipt.fsid),
-        seller: new_receipt.seller,
-        inn: new_receipt.inn,
-        date: new_receipt.date,
-        sum: new_receipt.sum,
+    for (key of arr) {
+      // console.log(key)
+      let new_receipt = await findUserReceipt(key)
+      if (!new_receipt) {
+        // console.log('Чек не найден в БД')
+      } else {
+        record = {
+          fsid: String(new_receipt.fsid),
+          seller: new_receipt.seller,
+          inn: new_receipt.inn,
+          date: new_receipt.date,
+          sum: new_receipt.sum,
+        }
+        // console.log('Пишем строку в файл XLSX')
+        // ctx.replyWithHTML('Пишем строку в файл XLSX')
+        worksheet.addRow(record)
       }
-      // console.log('Пишем строку в файл XLSX')
-      // ctx.replyWithHTML('Пишем строку в файл XLSX')
-      worksheet.addRow(record)
     }
+
+    await worksheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true }
+    })
+
+    await workbook.xlsx
+      .writeFile(file_path)
+      .then(() => {
+        // console.log('Сохраняем файл XLSX')
+        // ctx.replyWithHTML('Отдаем файл')
+        ctx.replyWithDocument({ source: file_path })
+      })
+      .catch((err) => {
+        console.log('err', err)
+      })
+
+    await fs.unlink(file_path, (err) => {
+      if (err) throw err
+
+      // console.log('Удаляем файл XLSX')
+      // ctx.replyWithHTML('Удаляем мусор')
+    })
   }
-
-  await worksheet.getRow(1).eachCell((cell) => {
-    cell.font = { bold: true }
-  })
-
-  await workbook.xlsx
-    .writeFile(file_path)
-    .then(() => {
-      // console.log('Сохраняем файл XLSX')
-      // ctx.replyWithHTML('Отдаем файл')
-      ctx.replyWithDocument({ source: file_path })
-    })
-    .catch((err) => {
-      console.log('err', err)
-    })
-
-  await fs.unlink(file_path, (err) => {
-    if (err) throw err
-
-    // console.log('Удаляем файл XLSX')
-    // ctx.replyWithHTML('Удаляем мусор')
-  })
 })
 
 bot.hears('Проверка чека', async (ctx) => {
