@@ -293,7 +293,7 @@ bot.hears('Мои чеки', async (ctx) => {
       .writeFile(file_path)
       .then(() => {
         // console.log('Сохраняем файл XLSX')
-        // ctx.replyWithHTML('Отдаем файл')
+        ctx.replyWithHTML('Отдаем файл')
         ctx.replyWithDocument({ source: file_path })
       })
       .catch((err) => {
@@ -301,12 +301,14 @@ bot.hears('Мои чеки', async (ctx) => {
         ctx.replyWithHTML(err)
       })
 
+    /*
     fs.unlink(file_path, (err) => {
       if (err) throw err
 
       // console.log('Удаляем файл XLSX')
       ctx.replyWithHTML('Удаляем мусор')
     })
+    */
   }
 })
 
