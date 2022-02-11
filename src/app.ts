@@ -244,9 +244,7 @@ bot.hears('Мои чеки', async (ctx) => {
   const workbook = new ExcelJS.Workbook()
   ctx.replyWithHTML(`${JSON.stringify(workbook, null, 2)}\n` + 'Создали книгу')
   const worksheet = workbook.addWorksheet('Мои чеки')
-  ctx.replyWithHTML(
-    `${JSON.stringify(worksheet, null, 2)}\n` + 'Создали лист в книге'
-  )
+
   worksheet.columns = [
     { header: 'Номер чека', key: 'fsid', width: 20 },
     { header: 'Продавец', key: 'seller', width: 40 },
