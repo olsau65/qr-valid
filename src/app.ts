@@ -242,7 +242,7 @@ bot.hears('Авторизация', (ctx) => {
 
 bot.hears('Мои чеки', async (ctx) => {
   const workbook = new ExcelJS.Workbook()
-  ctx.replyWithHTML(`${JSON.stringify(workbook, null, 2)}\n` + 'Создали книгу')
+  ctx.replyWithHTML('Создали книгу')
   const worksheet = workbook.addWorksheet('Мои чеки')
 
   worksheet.columns = [
@@ -257,9 +257,7 @@ bot.hears('Мои чеки', async (ctx) => {
 
   let record = {}
   const arr = await findReceiptsUser(ctx.dbuser.id)
-  ctx.replyWithHTML(
-    `${JSON.stringify(arr, null, 2)}\n` + 'Получили массив чеков пользователя'
-  )
+  ctx.replyWithHTML('Получили массив чеков пользователя')
   if (!arr) {
     ctx.replyWithHTML('Нет сохраненных чеков')
   } else {
