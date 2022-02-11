@@ -270,6 +270,7 @@ bot.hears('Мои чеки', async (ctx) => {
       let new_receipt = await findUserReceipt(key)
       if (!new_receipt) {
         // console.log('Чек не найден в БД')
+        ctx.replyWithHTML('Чек не найден в БД')
       } else {
         record = {
           fsid: String(new_receipt.fsid),
@@ -279,7 +280,7 @@ bot.hears('Мои чеки', async (ctx) => {
           sum: new_receipt.sum,
         }
         // console.log('Пишем строку в файл XLSX')
-        // ctx.replyWithHTML('Пишем строку в файл XLSX')
+        ctx.replyWithHTML('Пишем строку в файл XLSX')
         worksheet.addRow(record)
       }
     }
@@ -297,6 +298,7 @@ bot.hears('Мои чеки', async (ctx) => {
       })
       .catch((err) => {
         console.log('err', err)
+        ctx.replyWithHTML(err)
       })
 
     fs.unlink(file_path, (err) => {
