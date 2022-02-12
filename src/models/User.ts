@@ -11,7 +11,7 @@ export class User {
   @prop()
   name: string
 
-  @prop({ ref: () => Receipt, index: true, unique: true })
+  @prop({ ref: () => Receipt, index: true })
   receipts: Ref<Receipt>[]
 
   @prop({ required: true, default: 'en' })
