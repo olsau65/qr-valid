@@ -302,12 +302,12 @@ bot.hears('Мои чеки', async (ctx) => {
         ctx.replyWithHTML('Отдаем файл')
         ctx.replyWithDocument({ source: file_path })
 
-        try {
-          fs.unlinkSync(file_path)
-          console.log('Deleted')
-        } catch (e) {
-          console.log(e)
-        }
+        // try {
+        //   fs.unlinkSync(file_path)
+        //   console.log('Deleted')
+        // } catch (e) {
+        //   console.log(e)
+        // }
       })
       .catch((err) => {
         console.log('err', err)
