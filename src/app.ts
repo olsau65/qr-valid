@@ -242,7 +242,7 @@ bot.hears('Авторизация', (ctx) => {
 
 bot.hears('Мои чеки', async (ctx) => {
   const workbook = new ExcelJS.Workbook()
-  ctx.replyWithHTML('Создали книгу')
+  // ctx.replyWithHTML('Создали книгу')
   const worksheet = workbook.addWorksheet('Мои чеки')
 
   worksheet.columns = [
@@ -253,7 +253,15 @@ bot.hears('Мои чеки', async (ctx) => {
     { header: 'Сумма', key: 'sum', width: 20 },
   ]
 
-  const file_path = ctx.dbuser.id + '.xlsx'
+  const dir_path = 'tmp/'
+  try {
+    fs.mkdirSync(dir_path, { recursive: true })
+    console.log('Done')
+  } catch (e) {
+    console.log(e)
+  }
+
+  const file_path = dir_path + ctx.dbuser.id + '.xlsx'
 
   let record = {}
   const arr = await findReceiptsUser(ctx.dbuser.id)
@@ -278,7 +286,7 @@ bot.hears('Мои чеки', async (ctx) => {
           sum: new_receipt.sum,
         }
         // console.log('Пишем строку в файл XLSX')
-        ctx.replyWithHTML('Пишем строку в файл XLSX')
+        // ctx.replyWithHTML('Пишем строку в файл XLSX')
         worksheet.addRow(record)
       }
     }
@@ -293,20 +301,18 @@ bot.hears('Мои чеки', async (ctx) => {
         // console.log('Сохраняем файл XLSX')
         ctx.replyWithHTML('Отдаем файл')
         ctx.replyWithDocument({ source: file_path })
+
+        try {
+          fs.unlinkSync(file_path)
+          console.log('Deleted')
+        } catch (e) {
+          console.log(e)
+        }
       })
       .catch((err) => {
         console.log('err', err)
         ctx.replyWithHTML(err)
       })
-
-    /*
-    fs.unlink(file_path, (err) => {
-      if (err) throw err
-
-      // console.log('Удаляем файл XLSX')
-      ctx.replyWithHTML('Удаляем мусор')
-    })
-    */
   }
 })
 
