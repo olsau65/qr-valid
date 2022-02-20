@@ -300,14 +300,14 @@ bot.hears('Мои чеки', async (ctx) => {
       .then(() => {
         // console.log('Сохраняем файл XLSX')
         ctx.replyWithHTML('Отдаем файл')
-        ctx.replyWithDocument({ source: file_path })
-
-        // try {
-        //   fs.unlinkSync(file_path)
-        //   console.log('Deleted')
-        // } catch (e) {
-        //   console.log(e)
-        // }
+        ctx.replyWithDocument({ source: file_path }).then(() => {
+          try {
+            fs.unlinkSync(file_path)
+            console.log('Deleted')
+          } catch (e) {
+            console.log(e)
+          }
+        })
       })
       .catch((err) => {
         console.log('err', err)
