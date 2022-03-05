@@ -14,7 +14,7 @@ export async function sendAll(ctx: Context) {
       message.id,
       'Тестирование нового бота!\n\n' +
         'Ссылка на yandex - https://yandex.ru\n\n' +
-        ' Пользуйтесь и будьте здоровы в Новом Году!'
+        'Будьте здоровы!'
     )
     if (i == 29) {
       sleep(1000)
