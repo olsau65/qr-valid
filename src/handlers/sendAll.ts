@@ -12,9 +12,8 @@ export async function sendAll(ctx: Context) {
     i += 1
     ctx.telegram.sendMessage(
       message.id,
-      'Тестирование нового бота!\n\n' +
-        'Ссылка на yandex - https://yandex.ru\n\n' +
-        'Будьте здоровы!'
+      'Восстановлена работа бота с сервисом ФНС.\n\n' +
+        'Проверяйте и сохраняйте ваши чеки!'
     )
     if (i == 29) {
       sleep(1000)
